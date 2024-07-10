@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TVmaze API Example</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Search TV Shows</h1>
+        <div class="search-bar">
+            <input type="text" id="show-name" placeholder="Enter TV show name">
+            <button id="search-button">Search</button>
+        </div>
+        <div id="search-results" class="search-results"></div>
+    </div>
+
+    <script>
+        let page = 0;
+        let isLoading = false;
+        let loadedShows = new Set(); // Using a Set to store unique show IDs
+
+        document.getElementById('search-button').addEventListener('click', function() {
+            page = 0;  // Reset page counter
+            loadedShows.clear();  // Clear loaded shows
+            document.getElementById('search-results').innerHTML = '';  // Clear previous results
+            loadShows();
+        });
+
+        window.addEventListener('scroll', function() {
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500 && !isLoading) {
+                loadShows();
+            }
+        });
+
+        function loadShows() {
+            const showName = document.getElementById('show-name').value;
+            if (!showName) return;
+
+            isLoading = true;
+            fetch(`https://api.tvmaze.com/search/shows?q=${showName}&page=${page}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const resultsDiv = document.getElementById('search-results');
+                    if (data.length === 0) {
+                        if (page === 0) {
+                            resultsDiv.innerHTML = '<p>No shows found.</p>';
+                        }
+                        return;
+                    }
+                    data.forEach(item => {
+                        const show = item.show;
+                        if (!loadedShows.has(show.id)) { // Check if show is already loaded
+                            loadedShows.add(show.id); // Add show ID to Set
+                            const showDiv = document.createElement('div');
+                            showDiv.className = 'show';
+                            showDiv.innerHTML = `
+                                <img src="${show.image ? show.image.medium : 'https://via.placeholder.com/210x295?text=No+Image'}" alt="${show.name}">
+                                <h2>${show.name}</h2>
+                                <p>${show.summary ? show.summary : 'No summary available.'}</p>
+                            `;
+                            resultsDiv.appendChild(showDiv);
+                        }
+                    });
+                    page++;
+                })
+                .catch(error => {
+                    document.getElementById('search-results').innerText = 'An error occurred: ' + error.message;
+                    console.error('There was an error!', error);
+                })
+                .finally(() => {
+                    isLoading = false;
+                });
+        }
+    </script>
+</body>
+</html>
